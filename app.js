@@ -9,28 +9,41 @@ const port = 3000;
 // Promisify readdir for use with async/await
 const readdir = util.promisify(fs.readdir);
 
+// Function to retrieve both folders and files in the given directory path
 async function getAllFolders(dirPath) {
     const folders = [];
+    const files = [];
 
-    const files = await readdir(dirPath, { withFileTypes: true });
+    // Read the contents of the directory
+    const items = await readdir(dirPath, { withFileTypes: true });
 
-    for (const file of files) {
-        const folderName = file.name;
+    for (const item of items) {
+        const itemName = item.name;
+        const itemPath = path.join(dirPath, itemName);
 
-        if (file.isDirectory()) {
-            const folderPath = path.join(dirPath, folderName);
-            
-            const subFolders = await getAllFolders(folderPath);  // Recurse into subdirectories
-            
+        if (item.isDirectory()) {
+            // If it's a directory, recurse into the directory to get subfolders and files
+            const subFolders = await getAllFolders(itemPath);
+
             folders.push({
-                name: folderName,
-                path: folderPath,
-                subFolders: subFolders  // Subfolders are nested within
+                name: itemName,
+                path: itemPath,
+                subFolders: subFolders.folders,
+                files: subFolders.files,
+                type: "dir"
+            });
+        } else if (item.isFile()) {
+            // If it's a file, add it to the list of files
+            files.push({
+                name: itemName,
+                path: itemPath,
+                type: "file"
             });
         }
     }
 
-    return folders;
+    // Return both folders and files
+    return { folders, files };
 }
 
 // Serve static files from the 'public' directory
@@ -39,8 +52,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 // API route to get folder data
 app.get('/api/folder-data', async (req, res) => {
     try {
-        const currentPath = "D:/Dixit/MMP/Papers";  // Set your directory path here
-        const folderData = await getAllFolders(currentPath);
+        const currentPath = "D:/Dixit/MMP/GraphFolders";  // Set your directory path here
+        const rootFolderName = path.basename(currentPath);
+
+        const folderData = {
+            rootName: rootFolderName,
+            path: currentPath,
+            structure: await getAllFolders(currentPath),
+        };
         res.json(folderData);
     } catch (error) {
         res.status(500).send(error.toString());
