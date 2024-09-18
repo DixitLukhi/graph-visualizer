@@ -2,6 +2,8 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const util = require('util');
+const babelParser = require("@babel/parser");
+const babelTraverse = require("@babel/traverse").default; // Import babel traverse
 
 const app = express();
 const port = 3000;
@@ -9,12 +11,49 @@ const port = 3000;
 // Promisify readdir for use with async/await
 const readdir = util.promisify(fs.readdir);
 
-// Function to retrieve both folders and files in the given directory path
+// Promisify readFile for reading file content
+const readFile = util.promisify(fs.readFile);
+
+// Function to parse a JavaScript file and extract functions and variables
+function parseJavaScriptFile(content) {
+    try {
+        const ast = babelParser.parse(content, {
+            sourceType: "module",
+            plugins: ["jsx"] // If you want to support JSX (React)
+        });
+
+        const elements = [];
+
+        // Traverse the AST to find function and variable declarations
+        babelTraverse(ast, {
+            FunctionDeclaration(path) {
+                elements.push({
+                    type: "function",
+                    name: path.node.id.name
+                });
+            },
+            VariableDeclaration(path) {
+                path.node.declarations.forEach(declaration => {
+                    elements.push({
+                        type: "variable",
+                        name: declaration.id.name
+                    });
+                });
+            }
+        });
+
+        return elements;
+    } catch (error) {
+        console.error("Error parsing JS file", error);
+        return [];
+    }
+}
+
+// Function to retrieve all folders and files in the given directory path
 async function getAllFolders(dirPath) {
     const folders = [];
     const files = [];
 
-    // Read the contents of the directory
     const items = await readdir(dirPath, { withFileTypes: true });
 
     for (const item of items) {
@@ -22,9 +61,7 @@ async function getAllFolders(dirPath) {
         const itemPath = path.join(dirPath, itemName);
 
         if (item.isDirectory()) {
-            // If it's a directory, recurse into the directory to get subfolders and files
             const subFolders = await getAllFolders(itemPath);
-
             folders.push({
                 name: itemName,
                 path: itemPath,
@@ -32,17 +69,19 @@ async function getAllFolders(dirPath) {
                 files: subFolders.files,
                 type: "dir"
             });
-        } else if (item.isFile()) {
-            // If it's a file, add it to the list of files
+        } else if (item.isFile() && itemName.endsWith(".js")) {
+            const content = await readFile(itemPath, 'utf-8');
+            const elements = parseJavaScriptFile(content);
             files.push({
                 name: itemName,
                 path: itemPath,
-                type: "file"
+                type: "file",
+                elements, // Add the parsed elements
+                content
             });
         }
     }
 
-    // Return both folders and files
     return { folders, files };
 }
 

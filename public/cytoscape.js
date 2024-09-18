@@ -4,7 +4,6 @@ async function fetchFolderData() {
         throw new Error('Network response was not ok');
     }
     const folderData = await response.json();
-
     return folderData;
 }
 
@@ -23,6 +22,33 @@ const convertToGraphData = (folderData) => {
         }
     });
 
+    // Function to handle adding file content (functions/variables)
+    const addFileContentToGraph = (file, parentId) => {
+        const fileId = file.path;
+    
+        file.elements.forEach(element => {
+            const elementId = `${fileId}-${element.name}`;
+            
+            // Add element node (function or variable)
+            nodes.push({
+                data: {
+                    id: elementId,
+                    label: `${element.name} (${element.type})`,
+                    type: element.type
+                }
+            });
+    
+            // Connect file to its elements
+            edges.push({
+                data: {
+                    source: fileId,
+                    target: elementId
+                }
+            });
+        });
+    };
+
+    // Function to handle adding folders and subfolders
     const addFolderToGraph = (folder, parentId) => {
         const folderId = folder.path;
 
@@ -65,6 +91,11 @@ const convertToGraphData = (folderData) => {
                         target: fileId
                     }
                 });
+
+                // Add file's content like functions and variables
+                if (file.elements && file.elements.length > 0) {
+                    addFileContentToGraph(file, fileId);
+                }
             });
         }
 
@@ -98,6 +129,11 @@ const convertToGraphData = (folderData) => {
                     target: fileId
                 }
             });
+
+            // Add file's content like functions and variables
+            if (file.elements && file.elements.length > 0) {
+                addFileContentToGraph(file, fileId);
+            }
         });
     }
 
@@ -140,7 +176,7 @@ async function main() {
                         'shape': 'rectangle',
                         'label': 'data(label)',
                         'background-color': function (ele) {
-                            return ele.data('hasChildren') ? '#28a745' : '#0074D9'; // Green if it has children, blue otherwise
+                            return ele.data('hasChildren') ? '#28a745' : '#9fc9ed'; // Green if it has children, blue otherwise
                         },
                         'text-valign': 'center',
                         'color': '#fff',
@@ -163,9 +199,37 @@ async function main() {
                         'color': '#333',
                         'width': '60px',
                         'height': '60px',
-                        'border-width': '1px',
-                        'border-color': '#888',
-                        'font-size': '8px',
+                        'font-size': '14px',
+                        'text-outline-width': 1,
+                        'text-outline-color': '#fff'
+                    }
+                },
+                {
+                    selector: 'node[type="function"]',
+                    style: {
+                        'shape': 'ellipse',
+                        'label': 'data(label)',
+                        'background-color': '#0074D9',  // Blue for functions
+                        'text-valign': 'center',
+                        'color': '#fff',
+                        'width': '60px',
+                        'height': '60px',
+                        'font-size': '12px',
+                        'text-outline-width': 1,
+                        'text-outline-color': '#fff'
+                    }
+                },
+                {
+                    selector: 'node[type="variable"]',
+                    style: {
+                        'shape': 'hexagon',
+                        'label': 'data(label)',
+                        'background-color': '#ff851b',  // Orange for variables
+                        'text-valign': 'center',
+                        'color': '#fff',
+                        'width': '50px',
+                        'height': '50px',
+                        'font-size': '12px',
                         'text-outline-width': 1,
                         'text-outline-color': '#fff'
                     }
@@ -192,12 +256,10 @@ async function main() {
         });
 
         // Function to display or hide child nodes based on click
-        // Function to display or hide child nodes based on click
         cy.on('tap', 'node[type="dir"]', function (event) {
             const node = event.target;
             const children = cy.elements().filter(ele => ele.data('source') === node.data('id'));
 
-            // Check if the node has children before applying any changes
             if (node.data('hasChildren')) {
                 if (children.length > 0 && children.visible()) {
                     children.style('display', 'none'); // Hide children
