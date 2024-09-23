@@ -28,13 +28,15 @@ const convertToGraphData = (folderData) => {
     
         file.elements.forEach(element => {
             const elementId = `${fileId}-${element.name}`;
+            console.log("e :", element );
             
             // Add element node (function or variable)
             nodes.push({
                 data: {
                     id: elementId,
                     label: `${element.name} (${element.type})`,
-                    type: element.type
+                    type: element.type,
+                    body: element.body || 'No body available'
                 }
             });
     
@@ -166,7 +168,7 @@ async function main() {
                         'border-width': '3px',
                         'border-color': '#333',
                         'font-size': '14px',
-                        'text-outline-width': 2,
+                        'text-outline-width': 0,
                         'text-outline-color': '#000'
                     }
                 },
@@ -185,7 +187,7 @@ async function main() {
                         'border-width': '2px',
                         'border-color': '#333',
                         'font-size': '12px',
-                        'text-outline-width': 2,
+                        'text-outline-width': 0,
                         'text-outline-color': '#000'
                     }
                 },
@@ -200,7 +202,7 @@ async function main() {
                         'width': '60px',
                         'height': '60px',
                         'font-size': '14px',
-                        'text-outline-width': 1,
+                        'text-outline-width': 0,
                         'text-outline-color': '#fff'
                     }
                 },
@@ -212,10 +214,10 @@ async function main() {
                         'background-color': '#0074D9',  // Blue for functions
                         'text-valign': 'center',
                         'color': '#fff',
-                        'width': '60px',
-                        'height': '60px',
+                        'width': '100px',
+                        'height': '100px',
                         'font-size': '12px',
-                        'text-outline-width': 1,
+                        'text-outline-width': 0,
                         'text-outline-color': '#fff'
                     }
                 },
@@ -227,10 +229,10 @@ async function main() {
                         'background-color': '#ff851b',  // Orange for variables
                         'text-valign': 'center',
                         'color': '#fff',
-                        'width': '50px',
-                        'height': '50px',
+                        'width': '100px',
+                        'height': '100px',
                         'font-size': '12px',
-                        'text-outline-width': 1,
+                        'text-outline-width': 0,
                         'text-outline-color': '#fff'
                     }
                 },
@@ -248,11 +250,27 @@ async function main() {
             layout: {
                 name: 'cose',
                 animate: true,
-                padding: 30,
-                fit: true,
-                randomize: true,
-                nodeOverlap: 10
-            }
+                padding: 50,  // Increase padding around elements
+                fit: true,    // Fit the graph to the viewport
+                nodeRepulsion: 8000,  // Increase repulsion for better spacing between nodes
+                idealEdgeLength: 100, // Set ideal length of edges for better visibility
+                edgeElasticity: 100,  // Control how much edges stretch
+                gravity: 0.1,  // Lower gravity for more spread-out layout
+                initialTemp: 200, // Higher temperature for more movement at the start
+                coolingFactor: 0.99,  // Slow down the layout cooling
+                randomize: false, // Turn off randomization for consistent layouts
+            },
+            // layout: {
+            //     name: 'breadthfirst',
+            //     directed: true,  // Makes edges go from parent to child in one direction
+            //     padding: 50,  // Increase padding around elements
+            //     fit: true,    // Fit the graph to the viewport
+            //     spacingFactor: 1.5,  // Increase spacing between nodes
+            //     avoidOverlap: true,  // Avoid nodes overlapping
+            //     circle: false,  // Set to false to avoid circular layouts
+            //     maximalAdjustments: 10,  // Number of layout adjustments to improve layout
+            //     nodeDimensionsIncludeLabels: true // Ensure layout accounts for label size
+            // }
         });
 
         // Function to display or hide child nodes based on click
@@ -279,6 +297,34 @@ async function main() {
                     return ele.data('hasChildren') ? '#28a745' : '#0074D9'; // Reset node colors based on children
                 });
             }
+        });
+
+        cy.on('mouseover', 'node[type="function"], node[type="variable"]', function (event) {
+            const node = event.target;
+            const popup = document.getElementById('nodePopup');
+            const popupContent = document.getElementById('popupContent');
+        
+            // Set the content of the popup based on the node's data, including the full function body
+            popupContent.innerHTML = `
+                <strong>Name:</strong> ${node.data('label')}<br>
+                <strong>Type:</strong> ${node.data('type')}<br>
+                <strong>Body:</strong><pre>${node.data('body')}</pre>
+            `;
+        
+            // Position the popup near the mouse pointer
+            const mouseX = event.originalEvent.clientX;
+            const mouseY = event.originalEvent.clientY;
+            popup.style.left = mouseX + 'px';
+            popup.style.top = mouseY + 'px';
+        
+            // Show the popup
+            popup.style.display = 'block';
+        });
+        
+        cy.on('mouseout', 'node[type="function"], node[type="variable"]', function (event) {
+            const popup = document.getElementById('nodePopup');
+            // Hide the popup when the mouse leaves the node
+            popup.style.display = 'none';
         });
 
     } catch (error) {

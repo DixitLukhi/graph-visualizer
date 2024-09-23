@@ -12,11 +12,27 @@
             height: 1000px;
             border: 2px solid #000;
         }
+        #nodePopup {
+            background-color: white;
+            border: 1px solid #aaa;
+            border-radius: 5px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1000;
+            display: none;
+            max-width: 300px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+        }
     </style>
 </head>
 <body>
     <h1>Folder Structure Graph</h1>
     <div id="cy"></div>
+    <div id="nodePopup" style="display:none; position:absolute; background:white; border:1px solid #ccc; padding:10px; z-index:10;">
+        <p id="popupContent"></p>
+    </div>
     <script src="cytoscape.js"></script>
 </body>
 </html>

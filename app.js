@@ -25,18 +25,29 @@ function parseJavaScriptFile(content) {
         const elements = [];
 
         // Traverse the AST to find function and variable declarations
+        // Traverse the AST to find function and variable declarations
         babelTraverse(ast, {
             FunctionDeclaration(path) {
+                const functionStart = path.node.start;
+                const functionEnd = path.node.end;
+                const functionBody = content.slice(functionStart, functionEnd);
+
                 elements.push({
                     type: "function",
-                    name: path.node.id.name
+                    name: path.node.id.name,
+                    body: functionBody // Include the full function body
                 });
             },
             VariableDeclaration(path) {
                 path.node.declarations.forEach(declaration => {
+                    const variableStart = declaration.start;
+                    const variableEnd = declaration.end;
+                    const variableBody = content.slice(variableStart, variableEnd);
+
                     elements.push({
                         type: "variable",
-                        name: declaration.id.name
+                        name: declaration.id.name,
+                        body: variableBody // Include the full variable declaration
                     });
                 });
             }
